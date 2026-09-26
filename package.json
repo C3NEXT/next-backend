@@ -1,0 +1,7 @@
+{
+  "name": "next-backend",
+  "version": "1.0.0",
+  "description": "Cloud Code (Parse Server) para o painel Next, hospedado no Back4App",
+  "public": true,
+  "dependencies": {}
+}

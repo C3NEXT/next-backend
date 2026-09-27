@@ -234,3 +234,62 @@ Parse.Cloud.define("listVehicles", async (request) => {
 
   return vehicles;
 });
+
+Parse.Cloud.define("updateVehicleStatus", async (request) => {
+  if (!request.user) {
+    throw new Parse.Error(
+      Parse.Error.OPERATION_FORBIDDEN,
+      "É preciso estar autenticado.",
+    );
+  }
+
+  const { vehicleId, status } = request.params;
+
+  if (!STATUS_VALIDOS.includes(status)) {
+    throw new Parse.Error(
+      Parse.Error.VALIDATION_ERROR,
+      "Status inválido.",
+    );
+  }
+
+  const Vehicle = Parse.Object.extend("Vehicle");
+  const query = new Parse.Query(Vehicle);
+
+  const vehicle = await query.get(vehicleId, {
+    useMasterKey: true,
+  });
+
+  vehicle.set("status", status);
+
+  await vehicle.save(null, {
+    useMasterKey: true,
+  });
+
+  return serializeVehicle(vehicle);
+});
+
+Parse.Cloud.define("deleteVehicle", async (request) => {
+  if (!request.user) {
+    throw new Parse.Error(
+      Parse.Error.OPERATION_FORBIDDEN,
+      "É preciso estar autenticado.",
+    );
+  }
+
+  const { vehicleId } = request.params;
+
+  const Vehicle = Parse.Object.extend("Vehicle");
+  const query = new Parse.Query(Vehicle);
+
+  const vehicle = await query.get(vehicleId, {
+    useMasterKey: true,
+  });
+
+  await vehicle.destroy({
+    useMasterKey: true,
+  });
+
+  return {
+    deleted: true,
+  };
+});

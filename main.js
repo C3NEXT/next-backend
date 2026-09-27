@@ -139,3 +139,98 @@ Parse.Cloud.define("registerUser", async (request) => {
     role: user.get("role"),
   };
 });
+
+function serializeVehicle(vehicle) {
+  return {
+    id: vehicle.id,
+    marca: vehicle.get("marca"),
+    modelo: vehicle.get("modelo"),
+    ano: vehicle.get("ano"),
+    preco: vehicle.get("preco"),
+    tipo: vehicle.get("tipo"),
+    status: vehicle.get("status"),
+    tipoPreco: vehicle.get("tipoPreco"),
+    createdAt: vehicle.get("createdAt"),
+  };
+}
+
+Parse.Cloud.define("createVehicle", async (request) => {
+  if (!request.user) {
+    throw new Parse.Error(
+      Parse.Error.OPERATION_FORBIDDEN,
+      "É preciso estar autenticado.",
+    );
+  }
+
+  const {
+    marca,
+    modelo,
+    ano,
+    preco,
+    tipo,
+    tipoPreco,
+    status,
+  } = request.params;
+
+  const Vehicle = Parse.Object.extend("Vehicle");
+  const vehicle = new Vehicle();
+
+  vehicle.set("marca", marca);
+  vehicle.set("modelo", modelo);
+  vehicle.set("ano", Number(ano));
+  vehicle.set("preco", Number(preco));
+  vehicle.set("tipo", tipo);
+
+  if (tipoPreco) {
+    vehicle.set("tipoPreco", tipoPreco);
+  }
+
+  if (status) {
+    vehicle.set("status", status);
+  }
+
+  const acl = new Parse.ACL();
+
+  acl.setPublicReadAccess(true);
+  acl.setRoleWriteAccess("Administrador", true);
+
+  vehicle.setACL(acl);
+
+  await vehicle.save(null, {
+    useMasterKey: true,
+  });
+
+  return serializeVehicle(vehicle);
+});
+
+Parse.Cloud.define("listVehicles", async (request) => {
+  const { busca, status } = request.params || {};
+
+  const Vehicle = Parse.Object.extend("Vehicle");
+  const query = new Parse.Query(Vehicle);
+
+  query.descending("createdAt");
+  query.limit(1000);
+
+  if (status) {
+    query.equalTo("status", status);
+  }
+
+  const results = await query.find({
+    useMasterKey: true,
+  });
+
+  let vehicles = results.map(serializeVehicle);
+
+  if (busca) {
+    const termo = String(busca).toLowerCase();
+
+    vehicles = vehicles.filter((vehicle) =>
+      `${vehicle.marca} ${vehicle.modelo} ${vehicle.tipo}`
+        .toLowerCase()
+        .includes(termo),
+    );
+  }
+
+  return vehicles;
+});

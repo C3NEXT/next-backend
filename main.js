@@ -293,3 +293,78 @@ Parse.Cloud.define("deleteVehicle", async (request) => {
     deleted: true,
   };
 });
+
+function serializeSale(sale) {
+  const vehicle = sale.get("veiculo");
+
+  return {
+    id: sale.id,
+    data: sale.get("data"),
+    consultor: sale.get("consultor"),
+    valorFinal: sale.get("valorFinal"),
+    veiculo: vehicle
+      ? {
+          id: vehicle.id,
+          marca: vehicle.get("marca"),
+          modelo: vehicle.get("modelo"),
+        }
+      : null,
+  };
+}
+
+Parse.Cloud.define("registerSale", async (request) => {
+  if (!request.user) {
+    throw new Parse.Error(
+      Parse.Error.OPERATION_FORBIDDEN,
+      "É preciso estar autenticado.",
+    );
+  }
+
+  const {
+    vehicleId,
+    consultor,
+    valorFinal,
+  } = request.params;
+
+  const Vehicle = Parse.Object.extend("Vehicle");
+  const vehicleQuery = new Parse.Query(Vehicle);
+
+  const vehicle = await vehicleQuery.get(vehicleId, {
+    useMasterKey: true,
+  });
+
+  const Sale = Parse.Object.extend("Sale");
+  const sale = new Sale();
+
+  sale.set("veiculo", vehicle);
+  sale.set("consultor", consultor);
+  sale.set("valorFinal", Number(valorFinal));
+  sale.set("data", new Date());
+
+  await sale.save(null, {
+    useMasterKey: true,
+  });
+
+  vehicle.set("status", "Vendido");
+
+  await vehicle.save(null, {
+    useMasterKey: true,
+  });
+
+  return serializeSale(sale);
+});
+
+Parse.Cloud.define("listSales", async () => {
+  const Sale = Parse.Object.extend("Sale");
+  const query = new Parse.Query(Sale);
+
+  query.include("veiculo");
+  query.descending("data");
+  query.limit(1000);
+
+  const results = await query.find({
+    useMasterKey: true,
+  });
+
+  return results.map(serializeSale);
+});

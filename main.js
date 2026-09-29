@@ -392,3 +392,64 @@ Parse.Cloud.define("listUsers", async (request) => {
     role: user.get("role"),
   }));
 });
+
+Parse.Cloud.define("dashboardStats", async () => {
+  const Vehicle = Parse.Object.extend("Vehicle");
+  const Sale = Parse.Object.extend("Sale");
+
+  const [vehicles, sales] = await Promise.all([
+    new Parse.Query(Vehicle)
+      .limit(1000)
+      .find({ useMasterKey: true }),
+
+    new Parse.Query(Sale)
+      .limit(1000)
+      .find({ useMasterKey: true }),
+  ]);
+
+  const totalVeiculos = vehicles.length;
+
+  const disponiveis = vehicles.filter(
+    (vehicle) => vehicle.get("status") === "Disponível",
+  ).length;
+
+  const vendidos = vehicles.filter(
+    (vehicle) => vehicle.get("status") === "Vendido",
+  ).length;
+
+  const reservados = vehicles.filter(
+    (vehicle) => vehicle.get("status") === "Reservado",
+  ).length;
+
+  const agora = new Date();
+
+  const vendasDoMes = sales.filter((sale) => {
+    const data = sale.get("data");
+
+    return (
+      data &&
+      data.getMonth() === agora.getMonth() &&
+      data.getFullYear() === agora.getFullYear()
+    );
+  });
+
+  const receitaDoMes = vendasDoMes.reduce(
+    (soma, sale) => soma + (sale.get("valorFinal") || 0),
+    0,
+  );
+
+  const taxaConversao =
+    totalVeiculos > 0
+      ? (vendidos / totalVeiculos) * 100
+      : 0;
+
+  return {
+    totalVeiculos,
+    disponiveis,
+    vendidos,
+    reservados,
+    vendasNoMes: vendasDoMes.length,
+    receitaNoMes: receitaDoMes,
+    taxaConversao: Number(taxaConversao.toFixed(1)),
+  };
+});

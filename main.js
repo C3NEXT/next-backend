@@ -368,3 +368,27 @@ Parse.Cloud.define("listSales", async () => {
 
   return results.map(serializeSale);
 });
+
+Parse.Cloud.define("listUsers", async (request) => {
+  if (!request.user) {
+    throw new Parse.Error(
+      Parse.Error.OPERATION_FORBIDDEN,
+      "É preciso estar autenticado.",
+    );
+  }
+
+  const query = new Parse.Query(Parse.User);
+
+  query.limit(1000);
+
+  const users = await query.find({
+    useMasterKey: true,
+  });
+
+  return users.map((user) => ({
+    id: user.id,
+    nome: user.get("nome"),
+    email: user.get("email"),
+    role: user.get("role"),
+  }));
+});

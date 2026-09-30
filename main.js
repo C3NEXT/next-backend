@@ -1,6 +1,28 @@
 const STATUS_VALIDOS = ["Disponível", "Vendido", "Reservado"];
 const ANO_MINIMO = 1990;
 
+function exigirLogin(request) {
+  if (!request.user) {
+    throw new Parse.Error(
+      Parse.Error.OPERATION_FORBIDDEN,
+      "É preciso estar autenticado.",
+    );
+  }
+}
+
+async function buscarVeiculo(vehicleId) {
+  if (!vehicleId) {
+    throw new Parse.Error(
+      Parse.Error.VALIDATION_ERROR,
+      "Informe o veículo.",
+    );
+  }
+
+  return new Parse.Query(Parse.Object.extend("Vehicle")).get(vehicleId, {
+    useMasterKey: true,
+  });
+}
+
 function validarVeiculo(vehicle) {
   const marca = vehicle.get("marca");
   const modelo = vehicle.get("modelo");
@@ -66,6 +88,38 @@ function validarVeiculo(vehicle) {
   }
 }
 
+function serializeVehicle(vehicle) {
+  return {
+    id: vehicle.id,
+    marca: vehicle.get("marca"),
+    modelo: vehicle.get("modelo"),
+    ano: vehicle.get("ano"),
+    preco: vehicle.get("preco"),
+    tipo: vehicle.get("tipo"),
+    status: vehicle.get("status"),
+    tipoPreco: vehicle.get("tipoPreco"),
+    createdAt: vehicle.get("createdAt"),
+  };
+}
+
+function serializeSale(sale) {
+  const vehicle = sale.get("veiculo");
+
+  return {
+    id: sale.id,
+    data: sale.get("data"),
+    consultor: sale.get("consultor"),
+    valorFinal: sale.get("valorFinal"),
+    veiculo: vehicle
+      ? {
+          id: vehicle.id,
+          marca: vehicle.get("marca"),
+          modelo: vehicle.get("modelo"),
+        }
+      : null,
+  };
+}
+
 Parse.Cloud.beforeSave("Vehicle", async (request) => {
   validarVeiculo(request.object);
 });
@@ -100,7 +154,7 @@ Parse.Cloud.beforeSave("Sale", async (request) => {
   if (!sale.get("data")) {
     sale.set("data", new Date());
   }
-}); 
+});
 
 Parse.Cloud.beforeSave(Parse.User, async (request) => {
   const user = request.object;
@@ -140,27 +194,27 @@ Parse.Cloud.define("registerUser", async (request) => {
   };
 });
 
-function serializeVehicle(vehicle) {
-  return {
-    id: vehicle.id,
-    marca: vehicle.get("marca"),
-    modelo: vehicle.get("modelo"),
-    ano: vehicle.get("ano"),
-    preco: vehicle.get("preco"),
-    tipo: vehicle.get("tipo"),
-    status: vehicle.get("status"),
-    tipoPreco: vehicle.get("tipoPreco"),
-    createdAt: vehicle.get("createdAt"),
-  };
-}
+Parse.Cloud.define("listUsers", async (request) => {
+  exigirLogin(request);
+
+  const query = new Parse.Query(Parse.User);
+
+  query.limit(1000);
+
+  const users = await query.find({
+    useMasterKey: true,
+  });
+
+  return users.map((user) => ({
+    id: user.id,
+    nome: user.get("nome"),
+    email: user.get("email"),
+    role: user.get("role"),
+  }));
+});
 
 Parse.Cloud.define("createVehicle", async (request) => {
-  if (!request.user) {
-    throw new Parse.Error(
-      Parse.Error.OPERATION_FORBIDDEN,
-      "É preciso estar autenticado.",
-    );
-  }
+  exigirLogin(request);
 
   const {
     marca,
@@ -236,12 +290,7 @@ Parse.Cloud.define("listVehicles", async (request) => {
 });
 
 Parse.Cloud.define("updateVehicleStatus", async (request) => {
-  if (!request.user) {
-    throw new Parse.Error(
-      Parse.Error.OPERATION_FORBIDDEN,
-      "É preciso estar autenticado.",
-    );
-  }
+  exigirLogin(request);
 
   const { vehicleId, status } = request.params;
 
@@ -252,12 +301,7 @@ Parse.Cloud.define("updateVehicleStatus", async (request) => {
     );
   }
 
-  const Vehicle = Parse.Object.extend("Vehicle");
-  const query = new Parse.Query(Vehicle);
-
-  const vehicle = await query.get(vehicleId, {
-    useMasterKey: true,
-  });
+  const vehicle = await buscarVeiculo(vehicleId);
 
   vehicle.set("status", status);
 
@@ -268,57 +312,72 @@ Parse.Cloud.define("updateVehicleStatus", async (request) => {
   return serializeVehicle(vehicle);
 });
 
-Parse.Cloud.define("deleteVehicle", async (request) => {
-  if (!request.user) {
+Parse.Cloud.define("reserveVehicle", async (request) => {
+  exigirLogin(request);
+
+  const vehicle = await buscarVeiculo(request.params.vehicleId);
+
+  if (vehicle.get("status") !== "Disponível") {
     throw new Parse.Error(
-      Parse.Error.OPERATION_FORBIDDEN,
-      "É preciso estar autenticado.",
+      Parse.Error.VALIDATION_ERROR,
+      "Apenas veículos disponíveis podem ser reservados.",
     );
   }
 
-  const { vehicleId } = request.params;
+  vehicle.set("status", "Reservado");
 
-  const Vehicle = Parse.Object.extend("Vehicle");
-  const query = new Parse.Query(Vehicle);
-
-  const vehicle = await query.get(vehicleId, {
+  await vehicle.save(null, {
     useMasterKey: true,
   });
+
+  return serializeVehicle(vehicle);
+});
+
+Parse.Cloud.define("cancelReservation", async (request) => {
+  exigirLogin(request);
+
+  const vehicle = await buscarVeiculo(request.params.vehicleId);
+
+  if (vehicle.get("status") !== "Reservado") {
+    throw new Parse.Error(
+      Parse.Error.VALIDATION_ERROR,
+      "O veículo não está reservado.",
+    );
+  }
+
+  vehicle.set("status", "Disponível");
+
+  await vehicle.save(null, {
+    useMasterKey: true,
+  });
+
+  return serializeVehicle(vehicle);
+});
+
+async function removerVeiculo(request) {
+  exigirLogin(request);
+
+  const vehicle = await buscarVeiculo(request.params.vehicleId);
+
+  if (vehicle.get("status") === "Vendido") {
+    throw new Parse.Error(
+      Parse.Error.VALIDATION_ERROR,
+      "Não é possível excluir um veículo já vendido.",
+    );
+  }
 
   await vehicle.destroy({
     useMasterKey: true,
   });
 
-  return {
-    deleted: true,
-  };
-});
-
-function serializeSale(sale) {
-  const vehicle = sale.get("veiculo");
-
-  return {
-    id: sale.id,
-    data: sale.get("data"),
-    consultor: sale.get("consultor"),
-    valorFinal: sale.get("valorFinal"),
-    veiculo: vehicle
-      ? {
-          id: vehicle.id,
-          marca: vehicle.get("marca"),
-          modelo: vehicle.get("modelo"),
-        }
-      : null,
-  };
+  return { deleted: true };
 }
 
+Parse.Cloud.define("removeVehicle", removerVeiculo);
+Parse.Cloud.define("deleteVehicle", removerVeiculo);
+
 Parse.Cloud.define("registerSale", async (request) => {
-  if (!request.user) {
-    throw new Parse.Error(
-      Parse.Error.OPERATION_FORBIDDEN,
-      "É preciso estar autenticado.",
-    );
-  }
+  exigirLogin(request);
 
   const {
     vehicleId,
@@ -326,12 +385,14 @@ Parse.Cloud.define("registerSale", async (request) => {
     valorFinal,
   } = request.params;
 
-  const Vehicle = Parse.Object.extend("Vehicle");
-  const vehicleQuery = new Parse.Query(Vehicle);
+  const vehicle = await buscarVeiculo(vehicleId);
 
-  const vehicle = await vehicleQuery.get(vehicleId, {
-    useMasterKey: true,
-  });
+  if (vehicle.get("status") === "Vendido") {
+    throw new Parse.Error(
+      Parse.Error.VALIDATION_ERROR,
+      "Este veículo já foi vendido.",
+    );
+  }
 
   const Sale = Parse.Object.extend("Sale");
   const sale = new Sale();
@@ -367,30 +428,6 @@ Parse.Cloud.define("listSales", async () => {
   });
 
   return results.map(serializeSale);
-});
-
-Parse.Cloud.define("listUsers", async (request) => {
-  if (!request.user) {
-    throw new Parse.Error(
-      Parse.Error.OPERATION_FORBIDDEN,
-      "É preciso estar autenticado.",
-    );
-  }
-
-  const query = new Parse.Query(Parse.User);
-
-  query.limit(1000);
-
-  const users = await query.find({
-    useMasterKey: true,
-  });
-
-  return users.map((user) => ({
-    id: user.id,
-    nome: user.get("nome"),
-    email: user.get("email"),
-    role: user.get("role"),
-  }));
 });
 
 Parse.Cloud.define("dashboardStats", async () => {

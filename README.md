@@ -128,31 +128,31 @@ Usuarios --> DB
     <td align="center">
       <img src="assets/Emerson.png" width="120px;" alt="Foto do Emerson"/><br>
       <a href="https://www.linkedin.com/in/emerson-willian-19984630b/" target="_blank">
-        <sub><b>Emerson Dias</b></sub>
+        <sub><b>Emerson Dias</b></sub> <sub><b>RA:00000854559 </b></sub>
       </a>
     </td>
     <td align="center">
       <img src="assets/Clara.png" width="120px;" alt="Foto da Clara"/><br>
       <a href="https://www.linkedin.com/in/maria-clara-de-oliveira-barbosa-07457b364/" target="_blank">
-        <sub><b>Maria Clara</b></sub>
+        <sub><b>Maria Clara</b></sub> <sub><b>RA:00000855589 </b></sub>
       </a>
     </td>
     <td align="center">
       <img src="assets/Marcela.png" width="120px;" alt="Foto da Marcela"/><br>
       <a href= "https://www.linkedin.com/in/marcela-cristine-cantalice-santos-994309410/" target="_blank">
-        <sub><b>Marcela Cantalice</b></sub>
+        <sub><b>Marcela Cantalice</b></sub> <sub><b>RA:00000853203 </b></sub>
       </a>
     </td>
     <td align="center">
       <img src="assets/Marcos.png" width="120px;" alt="Foto do Marcos"/><br>
       <a href="https://www.linkedin.com/in/marcos-dalyson-9457373b3?utm_source=share_via&utm_content=profile&utm_medium=member_android" target="_blank">
-        <sub><b>Marcos Dalyson</b></sub>
+        <sub><b>Marcos Dalyson</b></sub> <sub><b>RA:00000854567 </b></sub>
       </a>
     </td>
     <td align="center">
       <img src="assets/Mateus.png" width="120px;" alt="Foto do Mateus"/><br>
       <a href="https://www.linkedin.com/in/mateus-oliveira-172492213" target="_blank">
-        <sub><b>Mateus Oliveira</b></sub>
+        <sub><b>Mateus Oliveira</b></sub> <sub><b>RA:00000855658 </b></sub>
       </a>
     </td>
     </td>

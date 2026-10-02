@@ -28,7 +28,7 @@ Projeto desenvolvido durante a disciplina de Programação Web e Mobile.
 </p>
 
 ## 🌐 Documentação
-- 📄 **Documentação em PDF**: [Clique aqui para acessar](documentacao/next_backend.pdf)
+- 📄 **Documentação em PDF**: [Clique aqui para acessar](documentacao/next_frontend.pdf)
 
 ## 💻 Projeto
 

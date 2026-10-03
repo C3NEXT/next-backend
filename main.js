@@ -376,6 +376,48 @@ async function removerVeiculo(request) {
 Parse.Cloud.define("removeVehicle", removerVeiculo);
 Parse.Cloud.define("deleteVehicle", removerVeiculo);
 
+Parse.Cloud.define("updateVehicle", async (request) => {
+  exigirLogin(request);
+
+  const {
+    vehicleId,
+    id,
+    marca,
+    modelo,
+    ano,
+    preco,
+    tipo,
+    tipoPreco,
+    status,
+  } = request.params;
+
+  const targetId = vehicleId || id;
+  const vehicle = await buscarVeiculo(targetId);
+
+  if (vehicle.get("status") === "Vendido") {
+    throw new Parse.Error(
+      Parse.Error.VALIDATION_ERROR,
+      "Não é possível editar um veículo já vendido.",
+    );
+  }
+
+  if (marca !== undefined) vehicle.set("marca", String(marca).trim());
+  if (modelo !== undefined) vehicle.set("modelo", String(modelo).trim());
+  if (ano !== undefined) vehicle.set("ano", Number(ano));
+  if (preco !== undefined) vehicle.set("preco", Number(preco));
+  if (tipo !== undefined) vehicle.set("tipo", String(tipo).trim());
+  if (tipoPreco !== undefined) vehicle.set("tipoPreco", tipoPreco);
+  if (status !== undefined) vehicle.set("status", status);
+
+  validarVeiculo(vehicle);
+
+  await vehicle.save(null, {
+    useMasterKey: true,
+  });
+
+  return serializeVehicle(vehicle);
+});
+
 Parse.Cloud.define("registerSale", async (request) => {
   exigirLogin(request);
 
